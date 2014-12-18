@@ -18,9 +18,8 @@ struct MyBitMap {
 	MyBitMap(int row, int col) {
 		int intCols = (col+31)/32;
 		size = (unsigned long long int)row*(unsigned long long int)intCols;
-//printf("Need size: %llu, row: %d, cols: %d \n", size, row, intCols);
+		//printf("Need size: %llu, row: %d, cols: %d \n", size, row, intCols);
 		bits = new unsigned int[size];
-//printf("finished init \n");
 		x = row;
 		y = intCols;
 		for(int i=0; i<row*intCols; i++)
@@ -50,7 +49,7 @@ struct MyBitMap {
 		delete [] bits;
 		int intCols = (col+31)/32;
 		size = (unsigned long long int)row*(unsigned long long int)intCols;
-printf("Need size: %llu \n", size);
+		//printf("Need size: %llu \n", size);
 		bits = new unsigned int[size];
 		x = row;
 		y = intCols;
@@ -179,7 +178,7 @@ __global__ void generateNext(unsigned int *pairs, unsigned int *d_parent, unsign
 		for(int p=0; p<colInt; p++) {
 			unsigned int aParent = d_parent[a*colInt+p];
 			unsigned int bParent = d_parent[b*colInt+p];
-//printf("a: %d, b: %d, avalue: %u, bvalue: %u, p: %d, equal: %d\n",a,b, aParent, bParent, p, equal);
+			//printf("a: %d, b: %d, avalue: %u, bvalue: %u, p: %d, equal: %d\n",a,b, aParent, bParent, p, equal);
 			unsigned int flag = 1;
 			flag = flag<<31;
 			int satisfy=1;
@@ -210,7 +209,7 @@ __global__ void generateNext(unsigned int *pairs, unsigned int *d_parent, unsign
 				d_child[indexHere] = d_child[indexHere] | flag;	
 				pairs[i*2] = a;
 				pairs[i*2+1] = b;
-//printf("satisfied a: %d, b: %d , d_childlast: %u \n",a, b, d_child[indexHere]);
+				//printf("satisfied a: %d, b: %d , d_childlast: %u \n",a, b, d_child[indexHere]);
 				break;
 			}
 			if(satisfy==0){
