@@ -90,7 +90,6 @@ struct MyBitMap {
 	}
 };
 
-
 __global__ void count_ones(unsigned int *d_itemBitmap, unsigned int *d_bitmap, int numItem, int numTxn, int support)
 {
 	int idx = blockIdx.x*blockDim.x+threadIdx.x;
@@ -119,7 +118,6 @@ __global__ void count_ones(unsigned int *d_itemBitmap, unsigned int *d_bitmap, i
 		}
 	}
 }
-
 
 __global__ void testSupport(unsigned int *pairs, unsigned int *d_parent_transactions, unsigned int *d_child_transactions, unsigned int *d_child_items, int numItem, int support, int numTxn, int numChild)
 {
@@ -154,9 +152,6 @@ __global__ void testSupport(unsigned int *pairs, unsigned int *d_parent_transact
 	}
 }
 
-
-
-
 __global__ void generateNext(unsigned int *pairs, unsigned int *d_parent, unsigned int *d_child, int itemSize, int itemNum, int size, int rowsItem)
 {
 	int idx = blockIdx.x*blockDim.x+threadIdx.x;
@@ -171,8 +166,6 @@ __global__ void generateNext(unsigned int *pairs, unsigned int *d_parent, unsign
 			temp--;
 		}
 		b=a+newI;
-
-
 		int colInt = (itemNum+32)/32;
 		int equal = itemSize-2;
 		for(int p=0; p<colInt; p++) {
@@ -223,16 +216,12 @@ __global__ void generateNext(unsigned int *pairs, unsigned int *d_parent, unsign
 
 int main(int argc, char *argv[])
 {
-	float support_ratio=0.01;
 	std::ifstream input_file(argv[1]);
-	int tnx, numItem;
-	input_file>>tnx>>numItem;
-
 	int numBlock = atoi(argv[2]);
 	int numThreads = atoi(argv[3]);
-
-
-
+	float support_ratio=0.01;
+	int tnx, numItem;
+	input_file>>tnx>>numItem;
 	float totalTime = 0;
 	MyBitMap bitmap(numItem, tnx);
 	int support = tnx*support_ratio;
@@ -266,12 +255,9 @@ int main(int argc, char *argv[])
 	cudaMemcpy(d_bitmap, bitmap.getPointer(), bitmap.getSize()*sizeof(unsigned int), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_itemBitmap, itemBitmap.getPointer(), itemBitmap.getSize()*sizeof(unsigned int), cudaMemcpyHostToDevice);
 
-
 	cudaEvent_t start, stop;
 	cudaEventCreate(&start);
 	cudaEventCreate(&stop);
-
-
 	cudaEventRecord(start);
 	count_ones<<<numBlock, numThreads>>>(d_itemBitmap, d_bitmap, numItem, tnx, support);
 	cudaEventRecord(stop);
@@ -281,11 +267,8 @@ int main(int argc, char *argv[])
 	totalTime+=milliseconds;
 	std::cout<<"Init time: "<<milliseconds<<"--------------------------"<<std::endl;
 
-
-
 	cudaMemcpy(bitmap.getPointer(),d_bitmap, bitmap.getSize()*sizeof(unsigned int), cudaMemcpyDeviceToHost);
 	cudaMemcpy(itemBitmap.getPointer(), d_itemBitmap, itemBitmap.getSize()*sizeof(unsigned int), cudaMemcpyDeviceToHost);
-
 	
 	cudaFree(d_bitmap);
 	cudaFree(d_itemBitmap);
@@ -298,9 +281,7 @@ int main(int argc, char *argv[])
 	
 	int tnxCol = (tnx+31)/32;
 	int itemCol = (numItem+32)/32;
-
 	int itemSize = 1;
-
 	while(newCount > 1) {
 		std::cout<<std::endl<<"new itemSize: "<<itemSize<<"  newCount: "<<newCount<<std::endl<<std::endl;
 		itemSize++;
@@ -315,57 +296,39 @@ int main(int argc, char *argv[])
 				j++;
 			}
 		}
-
-
 		int possibleNextChild = (newCount)*(newCount-1)/2;	
 		unsigned int *d_pairs, *d_parent, *d_child;
 		cudaMalloc(&d_pairs, 2*possibleNextChild*sizeof(unsigned int));		
 		cudaMalloc(&d_parent, newCount*sizeof(unsigned int)*itemCol);
 		cudaMalloc(&d_child, possibleNextChild*itemCol*sizeof(unsigned int));
-
 		printf("Device Variable alloc:\t%s\n", cudaGetErrorString(cudaGetLastError()));
-
 		cudaMemcpy(d_parent, newItemmap.getPointer(), newItemmap.getSize()*sizeof(unsigned int), cudaMemcpyHostToDevice);
-		
-
 		cudaEventRecord(start);
 		generateNext<<<numBlock, numThreads>>> (d_pairs, d_parent, d_child, itemSize, numItem, possibleNextChild, newCount);
 		cudaEventRecord(stop);
 		cudaEventSynchronize(stop);
 		milliseconds = 0;
 		cudaEventElapsedTime(&milliseconds, start, stop);
-
 		totalTime+=milliseconds;
 		std::cout<<"generate time: "<<milliseconds<<"--------------------------"<<std::endl;
-
-
 		unsigned int *pairs = new unsigned int[2*possibleNextChild];
 		MyBitMap child(possibleNextChild, numItem+1);
-		
 		cudaError_t error1 = cudaMemcpy(pairs, d_pairs, 2*possibleNextChild*sizeof(unsigned int), cudaMemcpyDeviceToHost);
 		cudaError_t error2 = cudaMemcpy(child.getPointer(), d_child, itemCol*possibleNextChild*sizeof(unsigned int), cudaMemcpyDeviceToHost);
-
 		//printf("Error1: %s\n", cudaGetErrorString(error1));
 		//printf("Error2: %s\n", cudaGetErrorString(error2));
-	
 		printf("Device Variable Copying:\t%s\n", cudaGetErrorString(cudaGetLastError()));
-
 		cudaFree(d_child);
 		cudaFree(d_pairs);
 		cudaFree(d_parent);
-
 		int usefulChild=0;
 		for(int m=0; m<possibleNextChild; m++) {
 			if(child.getBit(m,numItem) == 1)
 				usefulChild++;
 		}
 		unsigned int *pairsGen = new unsigned int[2*usefulChild];
-
-
 		std::cout<<std::endl<<"usefulChild:"<<usefulChild<<std::endl<<std::endl;
-
 		itemBitmap.resize(usefulChild, numItem+1);
-		
 		j=0;
 		for(int m=0; m<possibleNextChild; m++) {
 			if(child.getBit(m, numItem) == 1) {
@@ -376,26 +339,15 @@ int main(int argc, char *argv[])
 				++j;
 			}
 		}
-
-		
 		delete []pairs;
-
-		//do the last step, testSupport and run next round
 		unsigned int *d_parent_tnx, *d_child_tnx, *d_child_item;
-		
-
 		cudaMalloc(&d_pairs, 2*usefulChild*sizeof(unsigned int));		
 		cudaMalloc(&d_parent_tnx, newCount*sizeof(unsigned int)*tnxCol);		
 		cudaMalloc(&d_child_tnx, usefulChild*sizeof(unsigned int)*tnxCol);		
 		cudaMalloc(&d_child_item, usefulChild*sizeof(unsigned int)*itemCol);
-
-		
 		cudaMemcpy(d_pairs, pairsGen, 2*usefulChild*sizeof(unsigned int),cudaMemcpyHostToDevice);
 		cudaMemcpy(d_parent_tnx,newBitmap.getPointer() , newCount*sizeof(unsigned int)*tnxCol,cudaMemcpyHostToDevice);
 		cudaMemcpy(d_child_item,itemBitmap.getPointer() , usefulChild*sizeof(unsigned int)*itemCol,cudaMemcpyHostToDevice);
-
-
-
 		cudaEventRecord(start);
 		testSupport<<<numBlock, numThreads>>> (d_pairs, d_parent_tnx, d_child_tnx, d_child_item, numItem, support, tnx, usefulChild);
 		cudaEventRecord(stop);
@@ -404,9 +356,7 @@ int main(int argc, char *argv[])
 		cudaEventElapsedTime(&milliseconds, start, stop);
 		totalTime+=milliseconds;
 		std::cout<<"test time: "<<milliseconds<<"--------------------------"<<std::endl;
-
 		bitmap.resize(usefulChild, tnx);
-
 		cudaMemcpy(itemBitmap.getPointer(), d_child_item, usefulChild*sizeof(unsigned int)*itemCol, cudaMemcpyDeviceToHost);
 		cudaMemcpy(bitmap.getPointer(), d_child_tnx, usefulChild*sizeof(unsigned int)*tnxCol, cudaMemcpyDeviceToHost);
 		newCount = 0;
